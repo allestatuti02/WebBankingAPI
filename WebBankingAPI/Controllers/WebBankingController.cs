@@ -154,20 +154,27 @@ namespace WebBankingAPI.Controllers
             {
                 bool stato = bool.Parse(HttpContext.User.Claims.FirstOrDefault(x => x.Type == "state").Value);
                 string nameUser = HttpContext.User.Claims.FirstOrDefault(x => x.Type == "id").Value;
+                BankAccount toAccount = model.BankAccounts.Where(w => w.Iban == bonifico.Iban).FirstOrDefault();
 
+                var disponimible = model.AccountMovements.Where(w => w.Id == id).Sum(s => s.In);
                 var idBankFkUser = model.BankAccounts.Where(w => w.Id == id).Select(s => s.FkUser).FirstOrDefault();
                 int idUser = model.Users.Where(w => w.Username == nameUser).Select(s => s.Id).FirstOrDefault();
-                if (idBankFkUser == null)
+
+                
+                if (disponimible < bonifico.Importo)
+                {
+                    return Problem("Il denaro disponibile non è sufficiente per questa transizione.");
+                }
+                else if (idBankFkUser == null)
                 {
                     return NotFound("L'id del conto bancario selezionato non è presente.");
                 }
                 else if (idBankFkUser == idUser || stato)
                 {
-                    BankAccount toAccount = model.BankAccounts.Where(w => w.Iban == bonifico.Iban).FirstOrDefault();
 
                     if(bonifico.Importo <= 0)
                     {
-                        return Problem("L'importo inserito non è valido");
+                        return Problem("L'importo inserito non è valido.");
                     }
                     else if(toAccount != null)
                     {
@@ -178,11 +185,11 @@ namespace WebBankingAPI.Controllers
                             model.AccountMovements.Add(movementOut);
                             model.AccountMovements.Add(movementIn);
                             model.SaveChanges();
-                            return Ok("Denaro inviato correttamente");
+                            return Ok("Denaro inviato correttamente.");
                         }
                         catch (Exception)
                         {
-                            return Problem("Inserire correttamente tutti i campi");
+                            return Problem("Inserire correttamente tutti i campi.");
                         }
                     }
                     else
@@ -261,10 +268,6 @@ namespace WebBankingAPI.Controllers
                 var idFkUser = model.Users.Where(w => w.Id == nuovoConto.FkUser).FirstOrDefault();
                 var searchIban = model.BankAccounts.Where(w => w.Iban == nuovoConto.Iban).FirstOrDefault();
 
-                if (idBankFkUser != null)
-                {
-                    return Problem("L'iban inserito è già presente tra i conti.");
-                }
                 if (idBankFkUser == null)
                 {
                     return Problem("L'id del conto bancario selezionato non è presente.");
@@ -294,7 +297,7 @@ namespace WebBankingAPI.Controllers
                             }
                             catch (Exception)
                             {
-                                return Problem("Inserire correttamente tutti i campi");
+                                return Problem("Inserire correttamente tutti i campi.");
                             }
                         }
                         else
@@ -304,7 +307,7 @@ namespace WebBankingAPI.Controllers
                     }
                     else
                     {
-                        return Problem("La fkUser inserita non esiste");
+                        return Problem("La fkUser inserita non esiste.");
                     }
 
 
@@ -315,7 +318,8 @@ namespace WebBankingAPI.Controllers
 
         }
 
-        [HttpDelete("conti-correnti/{id}")] //Delete
+        // Punto - 10
+        [HttpDelete("conti-correnti/{id}")] 
         public ActionResult Delete(int id)
         {
             using (WebBankingContext model = new WebBankingContext())
@@ -341,7 +345,7 @@ namespace WebBankingAPI.Controllers
                     }
                     catch (Exception)
                     {
-                        return Problem("Inserire correttamente tutti i campi");
+                        return Problem("Inserire correttamente tutti i campi.");
                     }
                 }
                 else
